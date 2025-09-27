@@ -1,53 +1,63 @@
 #!/usr/bin/env python3
+"""
+robot.py
+Robot sensor data and actuator management module
+"""
+
 import rospy
 from geometry_msgs.msg import Twist
 from nav_msgs.msg import Odometry
+from sensor_msgs.msg import LaserScan
 from tf.transformations import euler_from_quaternion
+
 
 class Robot:
     def __init__(self):
-        # Base variables
-        self.twist = Twist()
+        # State variables
         self.position = None
-        self.orientation = None
         self.yaw = None
         self.odom = None
-        self.running = True
-
-        # Velocities
-        self.linear_velocity = 0.2
-        self.angular_velocity = 0.5
-
-        # ROS Publisher and Subscriber
+        
+        self.twist = Twist()
+        self.lidar_ranges = []
+        
+        # Publishers / Subscribers
         self.cmd_vel_pub = rospy.Publisher("/cmd_vel", Twist, queue_size=10)
         self.odom_sub = rospy.Subscriber("/odom", Odometry, self.odom_callback)
-
-    # Getting Odometry Data
-    def get_initial_position(self, timeout=5):
-        import time
-        start_time = time.time()
-        while self.odom is None:
-            if time.time() - start_time > timeout:
-                print("Odometry data not received!")
-                return None
-            rospy.sleep(0.1)
-        return self.odom
-
-    # Odometry callback
+        self.lidar_sub = rospy.Subscriber("/scan", LaserScan, self.lidar_callback)
+    
     def odom_callback(self, msg):
+        """Process odometry data"""
         self.odom = msg
         self.position = msg.pose.pose.position
-        self.orientation = msg.pose.pose.orientation
         q = (
-            self.orientation.x,
-            self.orientation.y,
-            self.orientation.z,
-            self.orientation.w
+            msg.pose.pose.orientation.x,
+            msg.pose.pose.orientation.y,
+            msg.pose.pose.orientation.z,
+            msg.pose.pose.orientation.w,
         )
         self.yaw = euler_from_quaternion(q)[2]
-
-    # Stop the robot
+    
+    def lidar_callback(self, scan):
+        """Process lidar data"""
+        self.lidar_ranges = list(scan.ranges)
+    
+    def get_front_distance(self, win=30):
+        """Return min distance in ±win deg around the front"""
+        if not self.lidar_ranges:
+            return float("inf")
+        a = self.lidar_ranges[0:win]
+        b = self.lidar_ranges[-win:]
+        return min(a + b)
+    
+    def get_left_distance(self, start=60, end=120):
+        """Return minimum distance in left region"""
+        if not self.lidar_ranges:
+            return float("inf")
+        return min(self.lidar_ranges[start:end])
+    
     def stop(self):
+        """Stop the robot"""
         self.twist.linear.x = 0.0
         self.twist.angular.z = 0.0
         self.cmd_vel_pub.publish(self.twist)
