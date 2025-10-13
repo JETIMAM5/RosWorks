@@ -17,6 +17,7 @@ It currently supports:
 - Navigating to user-defined goal coordinates
 
 > The project is designed as a foundation for learning **robotics algorithms** such as obstacle avoidance, mapping, SLAM, path planning, and localization.
+> Files in the *scripts* are not up to date . Planning to update them.
 
 ---
 
@@ -26,7 +27,7 @@ It currently supports:
 - [x] Polygon-based trajectories (triangle, square, etc.)  
 - [x] Circular trajectory following  
 - [x] Go-to-goal navigation with simple P-controller  
-- [ ] Obstacle avoidance *(planned)*  
+- [x] Obstacle avoidance (BUG0 Applied) *(BUG1,2,TANGENT are planned)* 
 - [ ] Mapping & SLAM *(planned)*  
 - [ ] Path planning *(planned)*  
 - [ ] Localization *(planned)*  
@@ -40,7 +41,7 @@ It currently supports:
 |--------------------------|--------|--------------|
 | Basic trajectory tracking | ✅     | Implemented  |
 | Go-to-goal navigation     | ✅     | P-controller |
-| Obstacle avoidance        | 🚧     | Planned      |
+| Obstacle avoidance        | ✅     | BUG0         |
 | Mapping & SLAM            | 🚧     | Planned      |
 | Path planning             | 🚧     | Planned      |
 | Localization              | 🚧     | Planned      |
