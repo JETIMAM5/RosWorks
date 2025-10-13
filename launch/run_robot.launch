@@ -1,0 +1,13 @@
+<launch>
+    <include file="$(find turtlebot3_gazebo)/launch/turtlebot3_world.launch"/>
+
+    <arg name="goal_x" default="2.5" doc="Target X coordinate"/>
+    <arg name="goal_y" default="-2.5" doc="Target Y coordinate"/>
+    <arg name="algorithm" default="bug2" doc="Algorithm to use: bug0, bug1, or bug2"/>
+
+    <node name="robot_navigation_node" pkg="turtlebot3_trajectory_pkg" type="run_robot.py" output="screen">
+        <param name="target_x" type="double" value="$(arg goal_x)"/>
+        <param name="target_y" type="double" value="$(arg goal_y)"/>
+        <param name="nav_algorithm" type="string" value="$(arg algorithm)"/>
+    </node>
+</launch>
