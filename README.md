@@ -27,7 +27,7 @@ It currently supports:
 - [x] Polygon-based trajectories (triangle, square, etc.)  
 - [x] Circular trajectory following  
 - [x] Go-to-goal navigation with simple P-controller  
-- [x] Obstacle avoidance (BUG0 Applied) *(BUG1,2,TANGENT are planned)* 
+- [x] Obstacle avoidance (BUG0, BUG1, BUG2 Applied) 
 - [ ] Mapping & SLAM *(planned)*  
 - [ ] Path planning *(planned)*  
 - [ ] Localization *(planned)*  
@@ -37,15 +37,15 @@ It currently supports:
 
 ## 🤖 Roadmap
 
-| Feature                  | Status | Notes        |
-|--------------------------|--------|--------------|
-| Basic trajectory tracking | ✅     | Implemented  |
-| Go-to-goal navigation     | ✅     | P-controller |
-| Obstacle avoidance        | ✅     | BUG0         |
-| Mapping & SLAM            | 🚧     | Planned      |
-| Path planning             | 🚧     | Planned      |
-| Localization              | 🚧     | Planned      |
-| Autonomous behaviors      | 🚧     | Planned      |
+| Feature                   | Status | Notes          |
+|-------------------------- |--------|----------------|
+| Basic trajectory tracking | ✅     | Implemented    |
+| Go-to-goal navigation     | ✅     | P-controller   |
+| Obstacle avoidance        | ✅     | BUG0,BUG1,BUG2 |
+| Mapping & SLAM            | 🚧     | Planned        |
+| Path planning             | 🚧     | Planned        |
+| Localization              | 🚧     | Planned        |
+| Autonomous behaviors      | 🚧     | Planned        |
 
 ---
 
