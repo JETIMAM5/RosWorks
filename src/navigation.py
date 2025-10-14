@@ -37,6 +37,7 @@ class Navigation:
         self.STATE_RETURN_TO_CLOSEST = 2
         self.CIRCUMNAVIGATE_STARTING_POINT = None
         self.CIRCUMNAVIGATE_CLOSEST_POINT = None
+        self.BUG1_HAS_LEFT_START = False
 
         # Bug2 parameters
         self.bug2_hit_point = None
@@ -205,75 +206,119 @@ class Navigation:
             return Twist()
         
         
+    # Please replace your entire old update_bug0 function with this new and corrected version.
+
     def update_bug0(self):
         
+        # --- STATE 0: GO TO GOAL ---
         if self.CURRENT_STATE == self.STATE_GO_TO_GOAL:
             if self.needs_obstacle_avoidance():
                 rospy.loginfo("[NAV-BUG0] OBSTACLE DETECTED ! SWITCHING THE AVOID_OBSTACLE MODE !")
                 self.CURRENT_STATE = self.STATE_AVOID_OBSTACLE
-
                 return self.wall_follower.compute_twist(self.robot.lidar_ranges)
 
             return self.compute_navigation_twist()
         
+        # --- STATE 1: AVOID OBSTACLE ---
         elif self.CURRENT_STATE == self.STATE_AVOID_OBSTACLE:
-            gx, gy = self.current_goal
+            
+            # --- THE FIX IS HERE ---
+            # Instead of unpacking a tuple, we now read the attributes from the Point object.
+            gx = self.current_goal.x
+            gy = self.current_goal.y
+            # --- END OF FIX ---
+            
+            # Calculate the angle towards the goal to know when to exit this state.
             target_angle = math.atan2(gy - self.robot.position.y, gx - self.robot.position.x)
             angle_error = (target_angle - self.robot.yaw + math.pi ) % (2*math.pi) - math.pi
 
+            # State Transition: If the path to the goal is clear, switch back.
             if abs(angle_error) < (math.pi / 6) and not self.needs_obstacle_avoidance():
                 rospy.loginfo("[NAV-BUG0] OBSTACLE BYPASSED ! TURNING BACK TO GO_TO_GOAL MODE !")
                 self.CURRENT_STATE = self.STATE_GO_TO_GOAL
                 return self.compute_navigation_twist()
         
+        # Action: As long as the exit condition is not met, continue following the wall.
         return self.wall_follower.compute_twist(self.robot.lidar_ranges)
     
 
+    # Please replace your entire old update_bug1 function with this new and corrected version.
+
     def update_bug1(self):
+        """
+        Executes the Bug1 algorithm logic based on the current state.
+        1. GO_TO_GOAL: Moves towards the goal until an obstacle is hit.
+        2. CIRCUMNAVIGATE: Follows the obstacle's perimeter to complete a full lap,
+        while remembering the point on the perimeter closest to the goal.
+        3. RETURN_TO_CLOSEST: Continues following the perimeter until it reaches the
+        saved closest point, then switches back to GO_TO_GOAL.
+        """
 
+        # --- STATE 0: GO TO GOAL ---
         if self.CURRENT_STATE == self.STATE_GO_TO_GOAL:
-
+            # State Transition: If an obstacle is detected, switch to circumnavigation.
             if self.needs_obstacle_avoidance():
-                rospy.loginfo("[NAV-BUG1] OBSTACLE DETECTED ! SWITCHING THE CIRCUMNAVIGATE MODE !")
+                rospy.loginfo("[NAV-BUG1] Obstacle detected! Switching to CIRCUMNAVIGATE state.")
                 self.CURRENT_STATE = self.STATE_CIRCUMNAVIGATE
 
-                """ Saving hit point: the location where the robot encountered the obstacle, currently the closest point to the goal """
+                # Reset the logic for this new obstacle encounter.
                 self.CIRCUMNAVIGATE_STARTING_POINT = self.robot.position
                 self.CIRCUMNAVIGATE_CLOSEST_POINT = self.robot.position
+                self.bug1_has_left_start = False # Reset the "has left start point" flag.
 
+                # Action: Immediately start following the wall.
                 return self.wall_follower.compute_twist(self.robot.lidar_ranges)
         
+            # Action: If no obstacle, continue moving towards the goal.
             return self.compute_navigation_twist()
                 
+        # --- STATE 1: CIRCUMNAVIGATE (and find the closest point) ---
         elif self.CURRENT_STATE == self.STATE_CIRCUMNAVIGATE:
 
+            # Task 1: Continuously update the closest point found so far.
             dist_current_to_goal = self.calc_dist_points(self.robot.position, self.current_goal)
             dist_closest_to_goal = self.calc_dist_points(self.CIRCUMNAVIGATE_CLOSEST_POINT, self.current_goal)
 
             if dist_current_to_goal < dist_closest_to_goal:
-
                 self.CIRCUMNAVIGATE_CLOSEST_POINT = self.robot.position
-                rospy.loginfo("[NAV-BUG1] POINT CLOSEST TO GOAL IDENTIFIED . SAVING THE POINT !")
+                rospy.loginfo("[NAV-BUG1] New closest point to goal identified and saved!")
 
-            if self.calc_dist_points(self.robot.position , self.CIRCUMNAVIGATE_STARTING_POINT) < 0.4 and self.CIRCUMNAVIGATE_STARTING_POINT is not None:
+            # Task 2: Correctly check if a full lap has been completed.
+            distance_from_start = self.calc_dist_points(self.robot.position, self.CIRCUMNAVIGATE_STARTING_POINT)
 
-                rospy.loginfo("[NAV-BUG1] CIRCUMNAVIGATION COMPLETED ! GOING TO THE CLOSEST POINT !")
-                self.CURRENT_STATE = self.STATE_RETURN_TO_CLOSEST
+            # First, check if the robot has moved far enough away from the start point.
+            # This prevents the algorithm from finishing prematurely.
+            if not self.bug1_has_left_start:
+                if distance_from_start > 1.0: # Use a significant distance like 1.0 meter
+                    rospy.loginfo("[NAV-BUG1] Sufficiently left the starting point. Now monitoring for return.")
+                    self.bug1_has_left_start = True
+            
+            # Only if we have already left the start, check if we have returned.
+            else:
+                if distance_from_start < 0.4: # Use a reasonable tolerance for returning
+                    rospy.loginfo("[NAV-BUG1] Circumnavigation complete! Switching to RETURN_TO_CLOSEST state.")
+                    self.CURRENT_STATE = self.STATE_RETURN_TO_CLOSEST
 
+            # Action: Regardless of the tasks above, continue following the wall.
             return self.wall_follower.compute_twist(self.robot.lidar_ranges)
         
+        # --- STATE 2: RETURN TO THE CLOSEST POINT ---
         elif self.CURRENT_STATE == self.STATE_RETURN_TO_CLOSEST:
 
+            # State Transition: Check if we have reached the saved closest point.
             if self.calc_dist_points(self.robot.position, self.CIRCUMNAVIGATE_CLOSEST_POINT) < 0.2:
-
-                rospy.loginfo("[NAV-BUG1] REACHED THE CLOSEST POINT ! SWITCHING GO_TO_GOAL MODE !")
+                rospy.loginfo("[NAV-BUG1] Reached the closest point! Switching back to GO_TO_GOAL state.")
                 self.CURRENT_STATE = self.STATE_GO_TO_GOAL
 
+                # Clean up memory variables for the next potential obstacle.
                 self.CIRCUMNAVIGATE_STARTING_POINT = None
                 self.CIRCUMNAVIGATE_CLOSEST_POINT = None
+                self.bug1_has_left_start = False # Also reset the flag here
 
+                # Action: Switch back to goal-seeking behavior.
                 return self.compute_navigation_twist()
 
+            # Action: Until the closest point is reached, continue following the wall.
             return self.wall_follower.compute_twist(self.robot.lidar_ranges)
 
     

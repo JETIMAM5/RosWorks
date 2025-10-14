@@ -9,14 +9,97 @@ from robot import Robot
 from navigation import Navigation
 
 
+# def main():
+#     rospy.init_node('run_robot_clean', anonymous=True)
+    
+#     # Start robot and navigation system
+#     robot = Robot()
+#     navigation = Navigation(robot)
+    
+#     rospy.sleep(1.0)  # Wait for initialization
+#     rate = rospy.Rate(10)  # 10 Hz
+    
+#     print("Robot ready! Enter coordinates (x y) or 'q' to quit.")
+    
+#     try:
+#         while not rospy.is_shutdown():
+            
+#             # If no goal or goal reached, request new goal
+#             if not navigation.has_goal():
+#                 user_input = input("Target coordinates (x y) or q: ").strip()
+                
+#                 if user_input.lower() == 'q':
+#                     break
+                
+#                 try:
+#                     x, y = map(float, user_input.split())
+#                     navigation.set_goal(x, y)
+#                 except Exception:
+#                     print("Invalid format! Example: 1.5 2.0")
+#                     continue
+            
+#             # Navigation update and movement
+#             twist = navigation.update()
+#             robot.cmd_vel_pub.publish(twist)
+            
+#             rate.sleep()# --- Kodun Geri Kalanı Neredeyse Aynı ---
+            
+#     except rospy.ROSInterruptException:
+#         pass
+#     except KeyboardInterrupt:
+#         print("\nExiting...")
+#     finally:
+#         # Stop robot
+#         stop_twist = navigation.stop()
+#         robot.cmd_vel_pub.publish(stop_twist)
+#         print("Robot stopped.")
+
+
+# if __name__ == "__main__":
+#     main()
+
+
+"""
+run_robot_interactive.py
+An interactive script for manual testing.
+It allows the user to select an algorithm and set goals dynamically.
+"""
+
+import rospy
+from robot import Robot
+from navigation import Navigation
+
 def main():
-    rospy.init_node('run_robot_clean', anonymous=True)
+    # Initialize the ROS node with a unique name
+    rospy.init_node('run_robot_interactive', anonymous=True)
     
-    # Start robot and navigation system
+    
+    print("------------------------------------")
+    print("--- Algorithm Selection ---")
+    algorithm_choice = input("Select an algorithm (bug0, bug1, bug2) [default is bug0]: ").strip().lower()
+    
+    # Check if the user's input is valid. If not, use the safe default.
+    if algorithm_choice not in ["bug0", "bug1", "bug2"]:
+        if algorithm_choice: # If the user typed something invalid
+            print(f"Invalid selection '{algorithm_choice}'. Defaulting to 'bug0'.")
+        else: # If the user just pressed Enter
+            print("No selection made. Defaulting to 'bug0'.")
+        selected_algorithm = "bug0"
+    else:
+        selected_algorithm = algorithm_choice
+    
+    print(f"Algorithm '{selected_algorithm.upper()}' selected.")
+    print("------------------------------------")
+    
+    
+    
+    # Create the Robot and Navigation instances.
     robot = Robot()
-    navigation = Navigation(robot)
     
-    rospy.sleep(1.0)  # Wait for initialization
+    # CRITICAL CHANGE: Pass the selected algorithm to the Navigation brain!
+    navigation = Navigation(robot, algorithm=selected_algorithm)
+    
+    rospy.sleep(1.0)  # Wait for everything to initialize
     rate = rospy.Rate(10)  # 10 Hz
     
     print("Robot ready! Enter coordinates (x y) or 'q' to quit.")
@@ -24,7 +107,7 @@ def main():
     try:
         while not rospy.is_shutdown():
             
-            # If no goal or goal reached, request new goal
+            # If there is no active goal, ask the user for a new one.
             if not navigation.has_goal():
                 user_input = input("Target coordinates (x y) or q: ").strip()
                 
@@ -38,18 +121,17 @@ def main():
                     print("Invalid format! Example: 1.5 2.0")
                     continue
             
-            # Navigation update and movement
+            # Main navigation update loop
             twist = navigation.update()
             robot.cmd_vel_pub.publish(twist)
             
             rate.sleep()
             
-    except rospy.ROSInterruptException:
-        pass
-    except KeyboardInterrupt:
+    except (rospy.ROSInterruptException, KeyboardInterrupt):
+        # Handle Ctrl+C gracefully
         print("\nExiting...")
     finally:
-        # Stop robot
+        # Always stop the robot when the program ends.
         stop_twist = navigation.stop()
         robot.cmd_vel_pub.publish(stop_twist)
         print("Robot stopped.")
@@ -57,6 +139,7 @@ def main():
 
 if __name__ == "__main__":
     main()
+
 
 # ------------------------ VARIOUS TRAJECTORY EXAMPLES -------------------------------------
 #     # Example usage:
