@@ -14,7 +14,7 @@ from wall_follower import WallFollower
 class Navigation:
 
     def __init__(self, robot, goal_tolerance=0.05, max_linear=0.15, 
-                 ang_p=0.6, dist_scale=0.5, front_threshold=0.3, algorithm="bug0"):
+                 ang_p=0.6, dist_scale=0.5, front_threshold=0.4, algorithm="bug0"):
         self.robot = robot
         self.avoider = Avoider()
         self.wall_follower = WallFollower()
@@ -189,9 +189,6 @@ class Navigation:
         if not self.has_goal():
             return Twist()  # No goal, stop
         
-        if self.get_front_distance() < 0.15 :
-            return self.avoider.compute_avoidance_twist(self.robot.lidar_ranges)
-        
         if self.OA_ALGORITHM == "bug0" :
             return self.update_bug0()
         
@@ -295,7 +292,7 @@ class Navigation:
             
             # Only if we have already left the start, check if we have returned.
             else:
-                if distance_from_start < 0.4: # Use a reasonable tolerance for returning
+                if distance_from_start < 0.5: # Use a reasonable tolerance for returning
                     rospy.loginfo("[NAV-BUG1] Circumnavigation complete! Switching to RETURN_TO_CLOSEST state.")
                     self.CURRENT_STATE = self.STATE_RETURN_TO_CLOSEST
 
@@ -306,7 +303,7 @@ class Navigation:
         elif self.CURRENT_STATE == self.STATE_RETURN_TO_CLOSEST:
 
             # State Transition: Check if we have reached the saved closest point.
-            if self.calc_dist_points(self.robot.position, self.CIRCUMNAVIGATE_CLOSEST_POINT) < 0.2:
+            if self.calc_dist_points(self.robot.position, self.CIRCUMNAVIGATE_CLOSEST_POINT) < 0.35:
                 rospy.loginfo("[NAV-BUG1] Reached the closest point! Switching back to GO_TO_GOAL state.")
                 self.CURRENT_STATE = self.STATE_GO_TO_GOAL
 
@@ -351,8 +348,8 @@ class Navigation:
             #    This prevents getting trapped in U-shaped obstacles.
             is_closer_to_goal = self.calc_dist_points(self.robot.position, self.current_goal) < self.calc_dist_points(self.bug2_hit_point, self.current_goal)
 
-            if dist_to_line < 0.1 and is_closer_to_goal:
-                rospy.loginfo("[NAV-BUG2] M-Line RE-ACQUIRED ! SWITCHING BACK TO GO_TO_GOAL MODE.")
+            if dist_to_line < 0.3 and is_closer_to_goal and not self.needs_obstacle_avoidance():
+                rospy.loginfo("[NAV-BUG2] M-Line RE-ACQUIRED AND PATH IS CLEAR ! SWITCHING BACK TO GO_TO_GOAL MODE.")
                 self.CURRENT_STATE = self.STATE_GO_TO_GOAL
                 
                 # CLEAN MEMORY: The M-Line is no longer needed, reset the hit point for the next obstacle.

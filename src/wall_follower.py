@@ -19,17 +19,38 @@ class WallFollower:
 
 
     def get_relevant_distances(self, lidar_ranges):
-
-        """ Gets the lidar ranges for following the wall of an obstacle"""
+        """
+        Gets the lidar ranges for following the wall of an obstacle.
+        This version is robust against '0.0', 'inf', and 'NaN' values
+        and uses windows for stability.
+        """
 
         if not lidar_ranges:
             return float('inf'), float('inf')
+
+        # --- Robust Right Distance ---
+        # Get a 10-degree window around the 270-degree mark (right side)
+        right_window = lidar_ranges[265:276]
         
-        right_distance = lidar_ranges[270]
-        front_ranges = lidar_ranges[0:5] + lidar_ranges[-5:]
-        front_distance = min(front_ranges) if front_ranges else float('inf')
+        # Filter out invalid readings (e.g., 0.0, inf, nan)
+        filtered_right = [r for r in right_window if r is not None and r > 0.01 and not math.isinf(r) and not math.isnan(r)]
+        
+        # Take the minimum valid distance from the window
+        right_distance = min(filtered_right) if filtered_right else float('inf')
+
+        # --- Robust Front Distance ---
+        # Get a 60-degree window at the front (30 degrees left, 30 degrees right)
+        half_window = 30
+        front_window = lidar_ranges[0:half_window + 1] + lidar_ranges[-half_window:]
+        
+        # Filter out invalid readings (e.g., 0.0, inf, nan)
+        filtered_front = [r for r in front_window if r is not None and r > 0.01 and not math.isinf(r) and not math.isnan(r)]
+        
+        # Take the minimum valid distance from the window
+        front_distance = min(filtered_front) if filtered_front else float('inf')
 
         return right_distance, front_distance
+
     
     def compute_twist(self, lidar_ranges):
         

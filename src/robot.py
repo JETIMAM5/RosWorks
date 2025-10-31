@@ -9,6 +9,7 @@ from geometry_msgs.msg import Twist
 from nav_msgs.msg import Odometry
 from sensor_msgs.msg import LaserScan
 from tf.transformations import euler_from_quaternion
+import math
 
 
 class Robot:
@@ -39,8 +40,21 @@ class Robot:
         self.yaw = euler_from_quaternion(q)[2]
     
     def lidar_callback(self, scan):
-        """Process lidar data"""
-        self.lidar_ranges = list(scan.ranges)
+        """Process lidar data : Filter out 0.0, inf, and nan values"""
+        raw_ranges = list(scan.ranges)
+
+        # Filtering 
+        min_valid_range = scan.range_min + 0.01
+
+        filtered_ranges = []
+        for r in raw_ranges:
+            if math.isinf(r) or math.isnan(r) or r < min_valid_range:
+                filtered_ranges.append(float('inf'))
+            else:
+                filtered_ranges.append(r)
+        
+        self.lidar_ranges = filtered_ranges
+        
     
     def get_front_distance(self, win=30):
         """Return min distance in ±win deg around the front"""
